@@ -1,0 +1,130 @@
+RSA js加密 java解密
+1. 首先你要拥有一对公钥、私钥；
+```
+pubKeyStr = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC1gr+rIfYlaNUNLiFsK/Knb54nQrCRTRMOdujTwkpqKLo4pNYj2StmryWETeFxOCFtCt/7ixTUrU2RGGjkIOlYC3144h0dJKDtPXw9+mFyW1VwWvtfoiSUeKTEbz1tSHghEcdEvVq6qlSQukiLAEZabiwfEE30TQ6g979X6YXhnQIDAQAB";
+priKeyStr = "MIICeQIBADANBgkqhkiG9w0BAQEFAASCAmMwggJfAgEAAoGBALWCv6sh9iVo1Q0uIWwr8qdvnidCsJFNEw526NPCSmooujik1iPZK2avJYRN4XE4IW0K3/uLFNStTZEYaOQg6VgLfXjiHR0koO09fD36YXJbVXBa+1+iJJR4pMRvPW1IeCERx0S9WrqqVJC6SIsARlpuLB8QTfRNDqD3v1fpheGdAgMBAAECgYEArmr1w3zfCxOxpvitJUUV589aKl/rS7TEmyGomdQZrel1CPlczRXinsmvQ3OTLzjA5geNNCpx2eyunL7YDF+T2WgcvpPlM+TUrBnTI9gKYwLXiWPuWou8oZolHaTuQQuLfnJTZ+6cYjHA3S4xnrJaEvvs8xgy6/UAJWXUpm/dQAECQQDlW9LPOrWaaVFuZqftVTwhTjhVmBZ/AeuXcmmmF2KBGaujbXJuVHVE5rzW9/6TQoWinuK4J/UOLcFl3VTTEPgZAkEAypggJwgYq3uz0KX8YScHV/gUZa56l5gRofMrIpiek4uvt2JM1kqgIq9T9PIOnv7dz7buRk2GXi3GLgEuhDr2JQJBAJPAypZ7QMBfdnkDosyOqzTdegcR+fQJ3aZrq0m3KNr4GY0nlZ8jw4QGjMKDcjmVkhdH+dAe1Ywzx7ICmoF6HgkCQQCTo+lKiIvx7GROWahi5J5lbVTwBQcyEpBHBX8Z5z8pJ1MWwXxdbmTk4gC9MOmW1QWwqg9bDIQvfgw+2n2bv5xBAkEAhUaiDfOywrIB3VUZWTqeIlVfqXHd8a9AcellTgIjK8WIu9gNGIfkWUVoVeOq0GCFTVqwO5tlac+oeDHCCimLyQ==";
+```
+    生成方法略；
+
+2. js中加密
+* 获取公钥的Exponent/Modulus 供js中使用
+```
+publicKey.getPublicExponent().toString(16);
+publicKey.getModulus().toString(16);
+```
+* 依赖包地址
+http://www.ohdave.com/rsa/ 
+引入依赖文件后
+```
+var rsa_m = "b582bfab21f62568d50d2e216c2bf2a76f9e2742b0914d130e76e8d3c24a6a28ba38a4d623d92b66af25844de17138216d0adffb8b14d4ad4d911868e420e9580b7d78e21d1d24a0ed3d7c3dfa61725b55705afb5fa2249478a4c46f3d6d48782111c744bd5abaaa5490ba488b00465a6e2c1f104df44d0ea0f7bf57e985e19d";
+    var rsa_e = "10001";
+    setMaxDigits(131); //131 => n的十六进制位数/2+3
+    var key      = new RSAKeyPair(rsa_e, '', rsa_m); //e,m是从Java代码中获取的
+
+    var password = "123456";
+    password = encryptedString(key, password); //不支持汉字
+    // 将password传递到后台，在后台使用Java解密
+```
+
+3. java 解密
+因为js加密时使用的是nopadding模式（每次加密结果一样），而java中默认是padding15，每次加密结果不一样，所以要依赖第三方包来解密
+/*
+ // http://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on
+compile group: 'org.bouncycastle', name: 'bcprov-jdk15on', version: '1.54'
+*/
+```
+RSAUtil.decryptJSRsa(password);
+```
+java 代码工具类:
+```
+package com.wch.encrypt;
+ 
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+ 
+import javax.crypto.Cipher;
+ 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.encoders.Hex;
+ 
+import com.netfinworks.util.RSA;
+ 
+/**
+* RSA 工具类。提供加密，解密，生成密钥对等方法。 需要bcprov-jdk16-140.jar包。
+* js依赖http://www.ohdave.com/rsa/
+* // http://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on
+compile group: 'org.bouncycastle', name: 'bcprov-jdk15on', version: '1.54'
+ 
+*/
+public class RSAUtil {
+    private static final String pubKeyStr = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC1gr+rIfYlaNUNLiFsK/Knb54nQrCRTRMOdujTwkpqKLo4pNYj2StmryWETeFxOCFtCt/7ixTUrU2RGGjkIOlYC3144h0dJKDtPXw9+mFyW1VwWvtfoiSUeKTEbz1tSHghEcdEvVq6qlSQukiLAEZabiwfEE30TQ6g979X6YXhnQIDAQAB";
+    private static final String priKeyStr = "MIICeQIBADANBgkqhkiG9w0BAQEFAASCAmMwggJfAgEAAoGBALWCv6sh9iVo1Q0uIWwr8qdvnidCsJFNEw526NPCSmooujik1iPZK2avJYRN4XE4IW0K3/uLFNStTZEYaOQg6VgLfXjiHR0koO09fD36YXJbVXBa+1+iJJR4pMRvPW1IeCERx0S9WrqqVJC6SIsARlpuLB8QTfRNDqD3v1fpheGdAgMBAAECgYEArmr1w3zfCxOxpvitJUUV589aKl/rS7TEmyGomdQZrel1CPlczRXinsmvQ3OTLzjA5geNNCpx2eyunL7YDF+T2WgcvpPlM+TUrBnTI9gKYwLXiWPuWou8oZolHaTuQQuLfnJTZ+6cYjHA3S4xnrJaEvvs8xgy6/UAJWXUpm/dQAECQQDlW9LPOrWaaVFuZqftVTwhTjhVmBZ/AeuXcmmmF2KBGaujbXJuVHVE5rzW9/6TQoWinuK4J/UOLcFl3VTTEPgZAkEAypggJwgYq3uz0KX8YScHV/gUZa56l5gRofMrIpiek4uvt2JM1kqgIq9T9PIOnv7dz7buRk2GXi3GLgEuhDr2JQJBAJPAypZ7QMBfdnkDosyOqzTdegcR+fQJ3aZrq0m3KNr4GY0nlZ8jw4QGjMKDcjmVkhdH+dAe1Ywzx7ICmoF6HgkCQQCTo+lKiIvx7GROWahi5J5lbVTwBQcyEpBHBX8Z5z8pJ1MWwXxdbmTk4gC9MOmW1QWwqg9bDIQvfgw+2n2bv5xBAkEAhUaiDfOywrIB3VUZWTqeIlVfqXHd8a9AcellTgIjK8WIu9gNGIfkWUVoVeOq0GCFTVqwO5tlac+oeDHCCimLyQ==";
+ 
+    /**
+     * 解密js加密的rsa
+     *
+     * @param str
+     *            js加密后的字符串;
+     *            js加密参考http://blog.csdn.net/songxiaobing/article/details
+     *            /17505237
+     * @return
+     */
+    public static String decryptJSRsa(String str) {
+        PrivateKey privateKey;
+        try {
+            privateKey = RSA.getPrivateKey(priKeyStr);
+            Cipher cipher = Cipher.getInstance("RSA/NONE/NoPadding",
+                    new BouncyCastleProvider());
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            StringBuilder sb = new StringBuilder(new String(cipher.doFinal(Hex
+                    .decode(str))));
+            return sb.reverse().toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+ 
+    /**
+     * 原生加解密代码
+     *
+     * @throws Exception
+     */
+    public static void rsaTest() throws Exception {
+        KeyFactory factory = KeyFactory.getInstance("RSA",
+                new BouncyCastleProvider());
+ 
+        byte[] bytes = Base64.getDecoder().decode(pubKeyStr);
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(bytes);
+        RSAPublicKey publicKey = (RSAPublicKey) factory.generatePublic(spec);
+        System.out.println(publicKey.getPublicExponent().toString(16));
+        System.out.println(publicKey.getModulus().toString(16));
+ 
+        byte[] pirvateBytes = Base64.getDecoder().decode(priKeyStr);
+        PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(pirvateBytes);
+        PrivateKey privateKey = factory.generatePrivate(privateSpec);
+ 
+        byte[] encode = RSA.encrypt("wch".getBytes(), privateKey);
+        System.out.println(Base64.getEncoder().encodeToString(encode));
+        System.out.println(new String(RSA.decrypt(encode, publicKey)));
+ 
+        byte[] publicEncode = RSA.encrypt("pubic".getBytes(), publicKey);
+        System.out.println(Base64.getEncoder().encodeToString(publicEncode));
+        System.out.println(new String(RSA.decrypt(publicEncode, privateKey)));
+ 
+        byte[] sign = RSA.sign("wch".getBytes(), privateKey);
+        System.out.println(Base64.getEncoder().encodeToString(sign));
+ 
+        System.out.println(RSA.verify("wch".getBytes(), sign, publicKey));
+    }
+ 
+    public static void main(String[] args) throws Exception {
+        rsaTest();
+    }
+ 
+}
+```
